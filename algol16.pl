@@ -149,12 +149,12 @@ fact_argument(Arg) -->
 %% LOGIKA
 
 %% wyrazenie logiczne
-bool_expr(Bool) -->
-   disjunct(Disjunct), bool_expr(Disjunct, Bool).
+bool_expr(Tmp) -->
+   disjunct(Disjunct), bool_expr(Disjunct, Bool), {flatten(Bool, Tmp)}.
 
 bool_expr(Acc, Bool) -->
    [tokOr], !, disjunct(Disjunct),
-      { Acc1 =.. [or, Acc, Disjunct] }, bool_expr(Acc1, Bool).
+      { Acc1 = [ Acc, Disjunct, or] }, bool_expr(Acc1, Bool).
 bool_expr(Acc, Acc) -->
    [].
 
@@ -163,16 +163,16 @@ disjunct(Disjunct) -->
 
 disjunct(Acc, Disjunct) -->
    [tokAnd], !, conjunct(Conjunct),
-      { Acc1 =.. [and, Acc, Conjunct] }, disjunct(Acc1, Disjunct).
+      { Acc1 = [ Acc, Conjunct, and] }, disjunct(Acc1, Disjunct).
 disjunct(Acc, Acc) -->
    [].
 
 conjunct(Conjunct) -->
    (  [tokLParen], !, bool_expr(Conjunct), [tokRParen]
    ;  [tokNot], !, conjunct(NotConjunct),
-         { Conjunct = not(NotConjunct) }
+         { Conjunct = [NotConjunct, not] }
    ;  arith_expr(LExpr), rel_op(Op), arith_expr(RExpr),
-         { Conjunct =.. [Op, LExpr, RExpr] }
+         { Conjunct =  [ LExpr, RExpr, Op] }
    ).
 
 
@@ -288,7 +288,17 @@ rel_op(geq) -->
 
 parse(CharCodeList, Absynt) :-
    phrase(lexer(TokList), CharCodeList),
-   phrase(arith_expr(Absynt), TokList).
+   phrase(bool_expr(Absynt), TokList).
+
+
+
+
+
+
+
+
+
+
 
 
 to_file(CharCodeList,File) :-
