@@ -86,12 +86,12 @@ identifier(L, Id) -->
 
 %% ARYTMETYKA
 %% wyrazenie arytmetyczne
-arith_expr(Expr) -->
-   summand(Summand), arith_expr(Summand, Expr).
+arith_expr(Lol) -->
+   summand(Summand), arith_expr(Summand, Expr), { flatten(Expr, Lol)}.
 
 arith_expr(Acc, Expr) -->
    additive_op(Op), !, summand(Summand),
-      { Acc1 =.. [Op, Acc, Summand] }, arith_expr(Acc1, Expr).
+      { Acc1 = [ Acc, Summand, Op] }, arith_expr(Acc1, Expr).
 arith_expr(Acc, Acc) -->
    [].
 
@@ -101,14 +101,17 @@ summand(Expr) -->
 
 summand(Acc, Expr) -->
    multiplicative_op(Op), !, factor(Factor),
-      { Acc1 =.. [Op, Acc, Factor] }, summand(Acc1, Expr).
+      { Acc1 = [ Acc, Factor, Op] }, summand(Acc1, Expr).
 summand(Acc, Acc) -->
    [].
+
+
+
 
 %% czynnik
 factor(Expr) -->
   [tokMinus],!, simple_expression(Expr1),
-    {Expr =.. [minus, Expr1] }
+    {Expr = [ Expr1, minus] }
   ; simple_expression(Expr).
 
 
@@ -285,7 +288,7 @@ rel_op(geq) -->
 
 parse(CharCodeList, Absynt) :-
    phrase(lexer(TokList), CharCodeList),
-   phrase(instruction(Absynt), TokList).
+   phrase(arith_expr(Absynt), TokList).
 
 
 to_file(CharCodeList,File) :-
