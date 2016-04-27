@@ -184,7 +184,7 @@ block(Block) -->
     { Block =.. [block, Dekl, Instr] }.
 
 %% deklaracje
-declarations(Dec) --> 
+declarations(Dec) --> %% to cos chyba popsulem wczesniej
   declaration(Dec2),!,declarations(Dec1),
     {Dec = [ Dec2 | Dec1] }
   ; [], { Dec = [] }.
@@ -227,7 +227,6 @@ formal_argument(Arg) -->
   [tokValue],!, variabl(Arg)
   ; variabl(Arg).
 
-
 %% instrukcja zlozona
 complex_instruction(Instr) -->
   instruction(In), [tokSColon],!, complex_instruction(In2),
@@ -244,7 +243,7 @@ instruction(Instr) -->
   ; [tokWrite],!, arith_expr(Ar),
     {Instr =.. [write, Ar]}
   ; [tokRead],!, [tokVar(N)],
-    {Instr =.. [read,N] }
+    {Instr =.. [read,var(N)] }     %% !! dodany recznie var
   ; [tokCall],!, procedure_call(Pro),
     {Instr =.. [call, Pro]}
   ; [tokWhile],!, bool_expr(Bool), [tokDo], complex_instruction(Inst), [tokDone],
@@ -286,7 +285,7 @@ rel_op(geq) -->
 
 parse(CharCodeList, Absynt) :-
    phrase(lexer(TokList), CharCodeList),
-   phrase(program(Absynt), TokList).
+   phrase(instruction(Absynt), TokList).
 
 
 to_file(CharCodeList,File) :-
