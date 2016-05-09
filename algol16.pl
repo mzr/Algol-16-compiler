@@ -150,36 +150,40 @@ fact_argument(Arg) -->
 
 %% wyrazenie logiczne
 bool_expr(Tmp) -->
-   disjunct(Disjunct), bool_expr(Disjunct, Bool), {flatten(Bool, Tmp)}.
-
+  conjunct(Conjunct), bool_expr(Conjunct, Bool),{flatten(Bool, Tmp)}.
 bool_expr(Acc, Bool) -->
-   [tokOr], !, disjunct(Disjunct),
-      { Acc1 = [ Acc, Disjunct, or] }, bool_expr(Acc1, Bool).
-bool_expr(Acc, Acc) -->
-   [].
-
-disjunct(Disjunct) -->
-   conjunct(Conjunct), disjunct(Conjunct, Disjunct).
-
-disjunct(Acc, Disjunct) -->
-   [tokAnd], !, conjunct(Conjunct),
-      { Acc1 = [ Acc, Conjunct, and] }, disjunct(Acc1, Disjunct).
-disjunct(Acc, Acc) -->
-   [].
+  [tokOr],!, conjunct(Conjunct),
+    {Acc1 = [Acc , Conjunct, or]}, 
+    bool_expr(Acc1,Bool).
+bool_expr(Acc,Acc) --> [].
 
 conjunct(Conjunct) -->
-   (  [tokLParen], !, bool_expr(Conjunct), [tokRParen]
-   ;  [tokNot], !, conjunct(NotConjunct),
-         { Conjunct = [NotConjunct, not] }
-   ;  arith_expr(LExpr), rel_op(Op), arith_expr(RExpr),
-         { Conjunct =  [ LExpr, RExpr, Op] }
-   ).
+  condition(Condition), conjunct(Condition,Conjunct).
+conjunct(Acc, Conjunct) -->
+  [tokAnd], !, condition(Condition),
+  { Acc1 = [Acc, Condition, and]},
+  conjunct(Acc1,Conjunct).
+conjunct(Acc,Acc) --> [].
+
+condition(Condition) -->
+  ( [tokNot],!, rel_expr(Expr),
+    {Condition = not(Expr) }
+  ; rel_expr(Expr),
+  {Condition = Expr }
+  ).
+
+rel_expr(Rel_expr) -->
+  ( arith_expr(Left),!, rel_op(Op), arith_expr(Right),
+    { Rel_expr = [Left, Right, Op] }
+  ; [tokLParen],!, bool_expr(Rel_expr), [tokRParen]
+  ). 
+
 
 
 %% INSTRUKCJE
 program(Prog) -->
   [tokProgram, tokVar(N)], block(Blo),
-    {Prog =.. [prog, N, Blo]}. 
+    {Prog =.. [procedure, N, Blo]}. 
 
 %% blok
 block(Block) -->
@@ -289,16 +293,6 @@ rel_op(geq) -->
 parse(CharCodeList, Absynt) :-
    phrase(lexer(TokList), CharCodeList),
    phrase(bool_expr(Absynt), TokList).
-
-
-
-
-
-
-
-
-
-
 
 
 to_file(CharCodeList,File) :-
