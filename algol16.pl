@@ -82,10 +82,83 @@ identifier(L, Id) -->
       { atom_codes(Id, [L|As]) }.
 
 
-%% PARSER
 
-%% ARYTMETYKA
-%% wyrazenie arytmetyczne
+%% PARSER
+program(Prog) -->
+  [tokProgram, tokVar(N)], block(Blo),
+    {Prog =.. [program, N, Blo]}. 
+
+block(Block) -->
+  declarations(Dekl), [tokBegin], complex_instruction(Instr), [tokEnd],
+    { Block =.. [block, Dekl, Instr] }.
+
+%% deklaracje
+declarations(Dec) --> %% to cos chyba popsulem wczesniej
+  declaration(Dec2),!,declarations(Dec1),
+    {Dec = [ Dec2 | Dec1] }
+  ; [], { Dec = [] }.
+
+%% deklaracja
+declaration(Dec) -->
+  declarator(Dec),!
+  ; procedura(Dec).
+
+%% deklarator
+declarator(Dec) -->
+  [tokLocal], variables(Dec).
+
+variables(Vars) -->
+  variabl(V), [tokColon],!, variables(Va),
+  { Vars = [V|Va] }
+  ; variabl(Var),
+  {Vars = [Var] }.
+
+variabl(Var) -->
+  [tokVar(Var)].
+
+procedura(Pro) -->
+  [tokProcedure, tokVar(Name), tokLParen], formal_arguments(Arg), [tokRParen], block(Blo),
+   {Pro =.. [procedure, Name, Arg, Blo]}. 
+
+formal_arguments(Arg) --> {Arg = []}.
+formal_arguments(Arg) -->
+  formal_arguments_sequence(Arg).
+
+formal_arguments_sequence(Arg) -->
+  formal_argument(Arg1), [tokColon],!, formal_arguments_sequence(Arg2),
+    {Arg = [Arg1|Arg2]}
+  ; formal_argument(Arg1),
+    {Arg = [Arg1]}.
+
+formal_argument(Arg) -->
+  [tokValue],!, variabl(Arg)
+  ; variabl(Arg).
+
+%% instrukcja zlozona
+complex_instruction(Instr) -->
+  instruction(In), [tokSColon],!, complex_instruction(In2),
+    {Instr = [In | In2] } %% tu cos nie teges chyba
+  ; instruction(Ins),
+  {Instr = [Ins] }.
+
+instruction(Instr) -->
+  [tokVar(N)],!, [tokAssgn], arith_expr(Ar),
+    {Instr =.. [asgn, var(N), Ar] }
+  ; [tokReturn],!, arith_expr(Ar),
+    { Instr =.. [return, Ar] }
+  ; [tokWrite],!, arith_expr(Ar),
+    {Instr =.. [write, Ar]}
+  ; [tokRead],!, [tokVar(N)],
+    {Instr =.. [read,var(N)] }     %% !! dodany recznie var
+  ; [tokCall],!, procedure_call(Pro),
+    {Instr =.. [call, Pro]}
+  ; [tokWhile],!, bool_expr(Bool), [tokDo], complex_instruction(Inst), [tokDone],
+    {Instr =.. [while,Bool,Inst]}
+  ; [tokIf], bool_expr(Bool), [tokThen], complex_instruction(Inst), [tokElse],!, complex_instruction(Instr2), [tokFi],
+    { Instr =.. [ife,Bool,Inst,Instr2] } 
+  ; [tokIf], bool_expr(Bool), [tokThen], complex_instruction(Inst), [tokFi],
+    {Instr =.. [if,Bool,Inst]}.
+
 arith_expr(Lol) -->
    summand(Summand), arith_expr(Summand, Expr), { flatten(Expr, Lol)}.
 
@@ -105,15 +178,11 @@ summand(Acc, Expr) -->
 summand(Acc, Acc) -->
    [].
 
-
-
-
 %% czynnik
 factor(Expr) -->
   [tokMinus],!, simple_expression(Expr1),
-    {Expr = [ Expr1, minus] }
+    {Expr =  neg( Expr1) } 
   ; simple_expression(Expr).
-
 
 %% wyrazenie_proste
 simple_expression(SimpleEx) -->
@@ -178,91 +247,6 @@ rel_expr(Rel_expr) -->
   ; [tokLParen],!, bool_expr(Rel_expr), [tokRParen]
   ). 
 
-
-
-%% INSTRUKCJE
-program(Prog) -->
-  [tokProgram, tokVar(N)], block(Blo),
-    {Prog =.. [procedure, N, Blo]}. 
-
-%% blok
-block(Block) -->
-  declarations(Dekl), [tokBegin], complex_instruction(Instr), [tokEnd],
-    { Block =.. [block, Dekl, Instr] }.
-
-%% deklaracje
-declarations(Dec) --> %% to cos chyba popsulem wczesniej
-  declaration(Dec2),!,declarations(Dec1),
-    {Dec = [ Dec2 | Dec1] }
-  ; [], { Dec = [] }.
-
-%% deklaracja
-declaration(Dec) -->
-  declarator(Dec),!
-  ; procedura(Dec).
-
-%% deklarator
-declarator(Dec) -->
-  [tokLocal], variables(Dec).
-
-%% zmienne
-variables(Vars) -->
-  variabl(V), [tokColon],!, variables(Va),
-  { Vars = [V|Va] }
-  ; variabl(Var),
-  {Vars = [Var] }.
-
-%% zmienna
-variabl(Var) -->
-  [tokVar(Var)].
-
-procedura(Pro) -->
-  [tokProcedure, tokVar(Name), tokLParen], formal_arguments(Arg), [tokRParen], block(Blo),
-   {Pro =.. [procedure, Name, Arg, Blo]}. 
-
-formal_arguments(Arg) --> {Arg = []}.
-formal_arguments(Arg) -->
-  formal_arguments_sequence(Arg).
-
-formal_arguments_sequence(Arg) -->
-  formal_argument(Arg1), [tokColon],!, formal_arguments_sequence(Arg2),
-    {Arg = [Arg1|Arg2]}
-  ; formal_argument(Arg1),
-    {Arg = [Arg1]}.
-
-formal_argument(Arg) -->
-  [tokValue],!, variabl(Arg)
-  ; variabl(Arg).
-
-%% instrukcja zlozona
-complex_instruction(Instr) -->
-  instruction(In), [tokSColon],!, complex_instruction(In2),
-    {Instr = [In | In2] } %% tu cos nie teges chyba
-  ; instruction(Ins),
-  {Instr = [Ins] }.
-
-%% instrukcja
-instruction(Instr) -->
-  [tokVar(N)],!, [tokAssgn], arith_expr(Ar),
-    {Instr =.. [asgn, N, Ar] }
-  ; [tokReturn],!, arith_expr(Ar),
-    { Instr =.. [return, Ar] }
-  ; [tokWrite],!, arith_expr(Ar),
-    {Instr =.. [write, Ar]}
-  ; [tokRead],!, [tokVar(N)],
-    {Instr =.. [read,var(N)] }     %% !! dodany recznie var
-  ; [tokCall],!, procedure_call(Pro),
-    {Instr =.. [call, Pro]}
-  ; [tokWhile],!, bool_expr(Bool), [tokDo], complex_instruction(Inst), [tokDone],
-    {Instr =.. [while,Bool,Inst]}
-  ; [tokIf], bool_expr(Bool), [tokThen], complex_instruction(Inst), [tokElse],!, complex_instruction(Instr2), [tokFi],
-    { Instr =.. [ife,Bool,Inst,Instr2] } 
-  ; [tokIf], bool_expr(Bool), [tokThen], complex_instruction(Inst), [tokFi],
-    {Instr =.. [if,Bool,Inst]}.
-
-
-
-
 %% OPERATORY
 additive_op(plus) -->
    [tokPlus], !.
@@ -295,8 +279,8 @@ parse(CharCodeList, Absynt) :-
    phrase(bool_expr(Absynt), TokList).
 
 
-to_file(CharCodeList,File) :-
-  parse(CharCodeList,Absynt),
+to_file(Program, File) :-
+  assembly(Program, Absynt),
    open(File,write, Stream),
    write(Stream, Absynt),
    close(Stream).
@@ -317,3 +301,124 @@ read_all(_, -1, []) :- !.
 read_all(Stream, Char, [Char|Chars]) :-
     get_code(Stream, NextChar),
     read_all(Stream, NextChar, Chars).
+
+
+  %% high-assembler
+
+assembly(In,Out) :-
+  phrase(prog(In),Out).
+
+prog(program(_Name,block(_Declarations,Instructions))) -->
+   [set_sp], instructions(Instructions),[footer].
+
+set_sp --> [const(ffff),swapa,const(fff0),store].
+footer --> [const(0000),syscall].
+push --> [swapd],load_reg(ffff),[swapa,swapd,store,swapa,swapd,const(0001),swapd,sub,swapa,swapd,const(ffff),swapa,store,swapd].
+pop --> load_reg(ffff),[swapd,swapa,const(0001),add,swapd,const(ffff),swapa,swapd,store].
+top --> load_reg(ffff),[swapd,swapa,const(0001),add,swapa,swapd,load].
+set_top --> [swapd],load_reg(ffff),[swapd,swapa,const(0001),add,swapa,store].
+load_reg(Reg) --> [const(Reg), swapa, load].
+store_reg(Reg) --> [swapa,const(Reg),swapa,store].
+
+
+instructions([I1|Instr]) -->
+    {I1 = write(Arith) },!,
+    arith_eval(Arith), [top, swapd, pop, const(2), syscall]
+  ; {I1 = read(Var) },!,
+    [const(1),syscall],store_reg(Var)
+  ; {I1 = asgn(Var,Arith)},!,
+    arith_eval(Arith), top, [swapd], pop, [swapd], store_reg(Var)
+  ; instructions(Instr).
+
+%% liczy wyrazenie arytmetyczne na stosie
+arith_eval([A1|Arith]) -->
+    {A1 = plus},!,
+    [top, swapd, pop, top, add, set_top]
+  ; {A1 = const(N)},!,
+    [const(N), push]
+  ; {A1 = minus},!,
+    top, [swapd], pop, top, [sub], set_top
+  ; {A1 = times},!,
+    top, [swapd], pop, top, [mul], set_top
+  ; {A1 = divs},!,
+    top, [swapd], pop, top, [div], set_top
+  ; {A1 = modulo},!,
+    top, [swapd], pop, top, [div, swapd, const(-16),swapd,shift],set_top
+  ; {A1 = var(X)},!,
+    load_reg(var(X)),push
+  ; {A1 = neq(Arith)},!,
+    arith_eval(Arith), top, [swapd, const(-1), mul], set_top
+  ; arith_eval(Arith).
+
+
+
+
+/*arith_eval([],[]).
+arith_eval([H|T],[Tmp|Out]) :-
+  (
+    H = plus, !,
+    Tmp = [top, swapd, pop, top, add, set_top]
+  ; H = minus,!,
+    Tmp = [top, swapd, pop, top, sub, set_top]    
+  ; H = times, !,
+    Tmp = [top, swapd, pop, top, times, set_top]
+  ; H = divs,!,
+    Tmp = [top, swapd, pop, top, div, set_top]
+  ; H = modulo,!,    %% TODO chyba ok
+    Tmp = [top, swapd, pop, top, div, swapd, const(-16),swapd,shift,set_top]
+  ; H = const(N),!,
+    Tmp = [const(N), push]
+  ; H = var(X),!,
+    Tmp = [load_reg(var(X)),push]
+  ; H = neg(Arith),!,
+    arith_eval(Arith,Eval),
+    Tmp = [Eval,top, swapd, const(-1), mul, set_top]
+  ),
+  arith_eval(T,Out).
+
+
+
+instructions([],[]).
+instructions([H|T],[Tmp|Out]) :-
+  (
+      H = write(Arith),!,
+      arith_eval(Arith,Eval),
+      Tmp = [Eval, top, swapd, pop, const(2), syscall]    
+    ; H = read(var(X)),!,
+      Tmp = [const(1),syscall,store_reg(var(X))]
+    ; H = asgn(var(X),Arith),
+      arith_eval(Arith,Eval),
+      Tmp = [Eval, top, swapd, pop, swapd, store_reg(var(X))]
+    %% TODO if, if-else, while
+
+
+
+  ),
+  instructions(T,Out).
+
+assemble(program(_Name,block(_Declarations,Instructions)),Output) :-
+  instructions(Instructions,Inst_Eval),
+  Out = [set_sp,Inst_Eval,footer],
+  flatten(Out,Output).
+%% co z minusem jednoargumentowym?
+
+assemble2([],[]).
+assemble2([H|T],[Tmp|Out]) :-
+(
+    H = set_sp,!,
+    Tmp = [const(ffff),swapa,const(fff0),store]
+  ; H = push,!,
+    Tmp = [swapd,load_reg(ffff),swapa,swapd,store,swapa,swapd,const(0001),swapd,sub,swapa,swapd,const(ffff),swapa,store,swapd]
+  ; H = pop,!,
+    Tmp = [load_reg(ffff),swapd,swapa,const(0001),add,swapd,const(ffff),swapa,swapd,store]
+  ; H = top,!,
+    Tmp = [load_reg(ffff),swapd,swapa,const(0001),add,swapa,swapd,load]
+  ; H = set_top,!,
+    Tmp = [swapd,load_reg(ffff),swapd,swapa,const(0001),add,swapa,store]
+  ; H = foter,!,
+    Tmp = [const(0000),syscal]
+  ; Tmp = H
+),
+assemble2(T,Out).*/
+
+    
