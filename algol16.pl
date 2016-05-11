@@ -285,13 +285,23 @@ to_file(Program, File) :-
    write(Stream, Absynt),
    close(Stream).
 
-main(Input,Output) :-
+assembly_to_file(Input, Output) :-
+    read_file(Input, SourceCode),
+    phrase(lexer(Tokens), SourceCode),
+    phrase(program(Absynt), Tokens),
+    phrase(prog(Absynt),Assemble),
+    open(Output,write, Stream),
+    write(Stream,Assemble),
+    close(Stream).
+
+parse_to_file(Input,Output) :-
     read_file(Input, SourceCode),
     phrase(lexer(Tokens), SourceCode),
     phrase(program(Absynt), Tokens),
     open(Output,write, Stream),
     write(Stream,Absynt),
     close(Stream).
+
 read_file(File, Chars) :-
     open(File, read, Stream),
     get_code(Stream, Char),
@@ -322,103 +332,42 @@ store_reg(Reg) --> [swapa,const(Reg),swapa,store].
 
 
 instructions([I1|Instr]) -->
+(
     {I1 = write(Arith) },!,
     arith_eval(Arith), [top, swapd, pop, const(2), syscall]
   ; {I1 = read(Var) },!,
-    [const(1),syscall],store_reg(Var)
+    [const(1),syscall,store_reg(Var)]
   ; {I1 = asgn(Var,Arith)},!,
-    arith_eval(Arith), top, [swapd], pop, [swapd], store_reg(Var)
-  ; instructions(Instr).
+    arith_eval(Arith), [top, swapd, pop, swapd, store_reg(Var)]
+),
+(
+    { Instr = [_|_] },!,
+    instructions(Instr)
+  ; { Instr = [] }
+).
 
 %% liczy wyrazenie arytmetyczne na stosie
 arith_eval([A1|Arith]) -->
+(   
     {A1 = plus},!,
     [top, swapd, pop, top, add, set_top]
   ; {A1 = const(N)},!,
     [const(N), push]
   ; {A1 = minus},!,
-    top, [swapd], pop, top, [sub], set_top
+    [top, swapd, pop, top, sub, set_top]
   ; {A1 = times},!,
-    top, [swapd], pop, top, [mul], set_top
+    [top, swapd, pop, top, mul, set_top]
   ; {A1 = divs},!,
-    top, [swapd], pop, top, [div], set_top
+    [top, swapd, pop, top, div, set_top]
   ; {A1 = modulo},!,
-    top, [swapd], pop, top, [div, swapd, const(-16),swapd,shift],set_top
+    [top, swapd, pop, top, div, swapd, const(-16),swapd,shift,set_top]
   ; {A1 = var(X)},!,
-    load_reg(var(X)),push
+    [load_reg(var(X)),push]
   ; {A1 = neq(Arith)},!,
-    arith_eval(Arith), top, [swapd, const(-1), mul], set_top
-  ; arith_eval(Arith).
-
-
-
-
-/*arith_eval([],[]).
-arith_eval([H|T],[Tmp|Out]) :-
-  (
-    H = plus, !,
-    Tmp = [top, swapd, pop, top, add, set_top]
-  ; H = minus,!,
-    Tmp = [top, swapd, pop, top, sub, set_top]    
-  ; H = times, !,
-    Tmp = [top, swapd, pop, top, times, set_top]
-  ; H = divs,!,
-    Tmp = [top, swapd, pop, top, div, set_top]
-  ; H = modulo,!,    %% TODO chyba ok
-    Tmp = [top, swapd, pop, top, div, swapd, const(-16),swapd,shift,set_top]
-  ; H = const(N),!,
-    Tmp = [const(N), push]
-  ; H = var(X),!,
-    Tmp = [load_reg(var(X)),push]
-  ; H = neg(Arith),!,
-    arith_eval(Arith,Eval),
-    Tmp = [Eval,top, swapd, const(-1), mul, set_top]
-  ),
-  arith_eval(T,Out).
-
-
-
-instructions([],[]).
-instructions([H|T],[Tmp|Out]) :-
-  (
-      H = write(Arith),!,
-      arith_eval(Arith,Eval),
-      Tmp = [Eval, top, swapd, pop, const(2), syscall]    
-    ; H = read(var(X)),!,
-      Tmp = [const(1),syscall,store_reg(var(X))]
-    ; H = asgn(var(X),Arith),
-      arith_eval(Arith,Eval),
-      Tmp = [Eval, top, swapd, pop, swapd, store_reg(var(X))]
-    %% TODO if, if-else, while
-
-
-
-  ),
-  instructions(T,Out).
-
-assemble(program(_Name,block(_Declarations,Instructions)),Output) :-
-  instructions(Instructions,Inst_Eval),
-  Out = [set_sp,Inst_Eval,footer],
-  flatten(Out,Output).
-%% co z minusem jednoargumentowym?
-
-assemble2([],[]).
-assemble2([H|T],[Tmp|Out]) :-
-(
-    H = set_sp,!,
-    Tmp = [const(ffff),swapa,const(fff0),store]
-  ; H = push,!,
-    Tmp = [swapd,load_reg(ffff),swapa,swapd,store,swapa,swapd,const(0001),swapd,sub,swapa,swapd,const(ffff),swapa,store,swapd]
-  ; H = pop,!,
-    Tmp = [load_reg(ffff),swapd,swapa,const(0001),add,swapd,const(ffff),swapa,swapd,store]
-  ; H = top,!,
-    Tmp = [load_reg(ffff),swapd,swapa,const(0001),add,swapa,swapd,load]
-  ; H = set_top,!,
-    Tmp = [swapd,load_reg(ffff),swapd,swapa,const(0001),add,swapa,store]
-  ; H = foter,!,
-    Tmp = [const(0000),syscal]
-  ; Tmp = H
+    arith_eval(Arith), [top, swapd, const(-1), mul, set_top]
 ),
-assemble2(T,Out).*/
-
-    
+(
+    { Arith = [_|_]  },!,  
+    arith_eval(Arith)
+  ; { Arith  = [] }
+).
