@@ -222,7 +222,7 @@ bool_expr(Tmp) -->
   conjunct(Conjunct), bool_expr(Conjunct, Bool),{flatten(Bool, Tmp)}.
 bool_expr(Acc, Bool) -->
   [tokOr],!, conjunct(Conjunct),
-    {Acc1 = [Acc , Conjunct, or]}, 
+    {Acc1 = or(Acc , Conjunct)}, 
     bool_expr(Acc1,Bool).
 bool_expr(Acc,Acc) --> [].
 
@@ -230,7 +230,7 @@ conjunct(Conjunct) -->
   condition(Condition), conjunct(Condition,Conjunct).
 conjunct(Acc, Conjunct) -->
   [tokAnd], !, condition(Condition),
-  { Acc1 = [Acc, Condition, and]},
+  { Acc1 = and(Acc, Condition)},
   conjunct(Acc1,Conjunct).
 conjunct(Acc,Acc) --> [].
 
@@ -243,7 +243,7 @@ condition(Condition) -->
 
 rel_expr(Rel_expr) -->
   ( arith_expr(Left),!, rel_op(Op), arith_expr(Right),
-    { Rel_expr = [Left, Right, Op] }
+    { Rel_expr =.. [Op, Left, Right] }
   ; [tokLParen],!, bool_expr(Rel_expr), [tokRParen]
   ). 
 
@@ -339,6 +339,21 @@ instructions([I1|Instr]) -->
     [const(1),syscall,store_reg(Var)]
   ; {I1 = asgn(Var,Arith)},!,
     arith_eval(Arith), [top, swapd, pop, swapd, store_reg(Var)]
+  ; {I1 = if(Bool,Instr2)},!,
+    bool_eval(Bool,True,False),
+    [label(True)], instructions(Instr2),
+    [label(False)]
+  ; {I1 = ife(Bool,Instr1,Instr2)},!,
+    bool_eval(Bool,True,False),
+    [label(True)],instructions(Instr1), [const(Fin), jump],
+    [label(False)],instructions(Instr2),
+    [label(Fin)]
+  ; {I1 = while(Bool,Instr1)},!,
+    [label(While_begin)],
+    bool_eval(Bool,True,False),
+    [label(True)], instructions(Instr1),
+    [const(While_begin),jump],
+    [label(False)]
 ),
 (
     { Instr = [_|_] },!,
@@ -363,7 +378,7 @@ arith_eval([A1|Arith]) -->
     [top, swapd, pop, top, div, swapd, const(-16),swapd,shift,set_top]
   ; {A1 = var(X)},!,
     [load_reg(var(X)),push]
-  ; {A1 = neq(Arith)},!,
+  ; {A1 = neg(Arith)},!,
     arith_eval(Arith), [top, swapd, const(-1), mul, set_top]
 ),
 (
@@ -371,3 +386,12 @@ arith_eval([A1|Arith]) -->
     arith_eval(Arith)
   ; { Arith  = [] }
 ).
+bool_eval([Bool],True,False) -->
+    {Bool = eq(Left,Right)},!,
+    arith_eval(Left),
+    arith_eval(Right),
+    [top, swapd, pop, top, sub, swapd, pop, const(True),swapa,swapd,branchz,const(False),jump]
+  ; {Bool = not(Bool_Expr)},!,
+    bool_eval([Bool_Expr],False,True)
+  ; {Bool = neq(Left,Right)},!,
+    bool_eval([not(eq(Left,Right))],True,False).
