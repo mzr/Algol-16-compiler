@@ -395,3 +395,44 @@ bool_eval([Bool],True,False) -->
     bool_eval([Bool_Expr],False,True)
   ; {Bool = neq(Left,Right)},!,
     bool_eval([not(eq(Left,Right))],True,False).
+
+
+
+
+
+%% get right
+
+get_right([L1|List],WC,Number_List) -->
+(
+    { L1 \= const(_), 0 =\= WC mod 4, WCP is WC + 1 },!,
+    [L1],
+      (   {List = [_|_]},!,
+          get_right(List,WCP,Number_List)
+        ; {List = [], reverse(Number_List,R) },
+          R
+      )
+  ; { L1 \= const(_), 0 is WC mod 4 },!,
+    [L1|Number_List],
+      (   {List = [_|_]},!,
+          get_right(List,1,[])
+        ; {List = []}
+      )
+  ; { L1 = const(N), 0 =\= WC mod 4, WCP is WC + 1 },!,
+    [const],
+      (   {List = [_|_]},!,
+          get_right(List,WCP,[N|Number_List])
+        ; {List = [],reverse(Number_List,R)},
+          R,[N]
+      )
+  ; { L1 = const(N), 0 is WC mod 4,reverse(Number_List,R) },!,
+    [const],R,[N],
+      (   {List = [_|_]},!,
+          get_right(List,1,[])
+        ; {List = []}
+      )
+).
+
+
+
+
+%% get_right(List,Out) :-
