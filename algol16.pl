@@ -400,39 +400,80 @@ bool_eval([Bool],True,False) -->
 
 
 
-%% get right
-
-get_right([L1|List],WC,Number_List) -->
+%% get right - ustawia ladnie consty i liczby co 4
+%% wywolywac z WC = 1 i Number_List = []
+get_const_right([L1|List],WC,Number_List) -->
 (
     { L1 \= const(_), 0 =\= WC mod 4, WCP is WC + 1 },!,
     [L1],
       (   {List = [_|_]},!,
-          get_right(List,WCP,Number_List)
+          get_const_right(List,WCP,Number_List)
         ; {List = [], reverse(Number_List,R) },
           R
       )
   ; { L1 \= const(_), 0 is WC mod 4 },!,
     [L1|Number_List],
       (   {List = [_|_]},!,
-          get_right(List,1,[])
+          get_const_right(List,1,[])
         ; {List = []}
       )
   ; { L1 = const(N), 0 =\= WC mod 4, WCP is WC + 1 },!,
     [const],
       (   {List = [_|_]},!,
-          get_right(List,WCP,[N|Number_List])
+          get_const_right(List,WCP,[N|Number_List])
         ; {List = [],reverse(Number_List,R)},
           R,[N]
       )
   ; { L1 = const(N), 0 is WC mod 4,reverse(Number_List,R) },!,
     [const],R,[N],
       (   {List = [_|_]},!,
-          get_right(List,1,[])
+          get_const_right(List,1,[])
         ; {List = []}
       )
 ).
 
+nops(N) --> 
+    {N is 0},!,
+    []
+  ; {N is 1},!,
+    [nop]
+  ; {N is 2},!,
+    [nop,nop]
+  ; {N is 3},!,
+    [nop,nop,nop].
 
+%% wywolywac z WC = 0
+nopping([L1|List],WC) -->
+(
+    {L1 = label(Label), 0 is WC mod 4 },!,
+    [label(Label)],
+      (   {List = [_|_]},!,
+          nopping(List,0)
+        ; {List = [] }
+      )
+  ; {L1 = label(Label), Pos is WC mod 4, Pos =\= 0, Nop_q is 4 - Pos -1},!,
+    [label(Label)],nops(Nop_q),
+      (   {List = [_|_]},!,
+          nopping(List,0)
+        ; {List = [] }
+      )
+  ; {L1 = jump, 3 is WC mod 4},!,
+    [jump],
+      (   {List = [_|_]},!,
+          nopping(List,0)
+        ; {List = [] }
+      )
+  ; {L1 = jump, Pos is WC mod 4, Nop_q is 4 - Pos-1},!,
+    [jump],nops(Nop_q),
+      (   {List = [_|_]},!,
+          nopping(List,0)
+        ; {List = [] }
+      )
+  ; {WCP is WC + 1},
+    [L1],
+      (   {List = [_|_]},!,
+          nopping(List,WCP)
+        ; {List = [] }
+      )
+).
 
-
-%% get_right(List,Out) :-
