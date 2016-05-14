@@ -311,7 +311,7 @@ read_all(Stream, Char, [Char|Chars]) :-
   
 prog(program(_Name,block(Declarations,Instructions)),Dec_List) -->
     [set_sp],
-    make_declarations(Declarations,[],65520,Dec_List),
+    make_declarations(Declarations,[],0xfff0,Dec_List),
     instructions(Instructions),[footer].
 
 make_declarations([H|T],List_Acc,Adress,Dec_List) -->
@@ -322,28 +322,29 @@ make_declarations([],List_Acc,_,List_Acc) --> [].
 replace_var([H|T],Dec) -->
     {H = var(Name), member(var(Name,Adress),Dec) },!,
     [Adress],replace_var(T,Dec)
-  ; {H \= var(_)},!,
-    [H], replace_var(T,Dec).
+  ; {H \= var(_), ground(H) },!,
+    [H], replace_var(T,Dec)
+  ; [H],replace_var(T,Dec).
 replace_var([],_) --> [].
 
-sp_minus --> load_reg(ffff),[swapd,swapa,const(0001),swapd,sub,swapd,const(ffff),swapa,swapd,store].
-set_sp --> [const(ffff),swapa,const(fff0),store].
-footer --> [const(0000),syscall].
-push --> [swapd],load_reg(ffff),[swapa,swapd,store,swapa,swapd,const(0001),swapd,sub,swapa,swapd,const(ffff),swapa,store,swapd].
-pop --> load_reg(ffff),[swapd,swapa,const(0001),add,swapd,const(ffff),swapa,swapd,store].
-top --> load_reg(ffff),[swapd,swapa,const(0001),add,swapa,swapd,load].
-set_top --> [swapd],load_reg(ffff),[swapd,swapa,const(0001),add,swapa,store].
+sp_minus --> load_reg(0xffff),[swapd,swapa,const(0x0001),swapd,sub,swapd,const(0xffff),swapa,swapd,store].
+set_sp --> [const(0xffff),swapa,const(0xfff0),store].
+footer --> [const(0x0000),syscall].
+push --> [swapd],load_reg(0xffff),[swapa,swapd,store,swapa,swapd,const(0x0001),swapd,sub,swapa,swapd,const(0xffff),swapa,store,swapd].
+pop --> load_reg(0xffff),[swapd,swapa,const(0x0001),add,swapd,const(0xffff),swapa,swapd,store].
+top --> load_reg(0xffff),[swapd,swapa,const(0x0001),add,swapa,swapd,load].
+set_top --> [swapd],load_reg(0xffff),[swapd,swapa,const(0x0001),add,swapa,store].
 load_reg(Reg) --> [const(Reg), swapa, load].
 store_reg(Reg) --> [swapa,const(Reg),swapa,store].
 
 instructions([I1|Instr]) -->
 (
     {I1 = write(Arith) },!,
-    arith_eval(Arith), [top, swapd, pop, const(2), syscall]
+    arith_eval(Arith), [top, swapd, pop, const(0x0002), syscall]
   ; {I1 = read(Var) },!,
     [const(1),syscall,store_reg(Var)]
   ; {I1 = asgn(Var,Arith)},!,
-    arith_eval(Arith), [top, swapd, pop, swapd, store_reg(Var)]
+    arith_eval(Arith), [top, swapd, pop, swapd], store_reg(Var)
   ; {I1 = if(Bool,Instr2)},!,
     bool_eval(Bool,True,False),
     [label(True)], instructions(Instr2),
@@ -380,11 +381,11 @@ arith_eval([A1|Arith]) -->
   ; {A1 = divs},!,
     [top, swapd, pop, top, div, set_top]
   ; {A1 = modulo},!,
-    [top, swapd, pop, top, div, swapd, const(-16),swapd,shift,set_top]
+    [top, swapd, pop, top, div, const(0xfff0),swapd,shift,set_top]
   ; {A1 = var(X)},!,
     [load_reg(var(X)),push]
   ; {A1 = neg(Arith)},!,
-    arith_eval(Arith), [top, swapd, const(-1), mul, set_top]
+    arith_eval(Arith), [top, swapd, const(0xffff), mul, set_top]
 ),
 (
     { Arith = [_|_]  },!,  
@@ -456,25 +457,25 @@ nops(N) -->
 %% wywolywac z WC = 0
 nopping([L1|List],WC) -->
 (
-    {L1 = label(Label), 0 is WC mod 4 },!,
+    {nonvar(L1), L1 = label(Label), 0 is WC mod 4},!,
     [label(Label)],
       (   {List = [_|_]},!,
           nopping(List,0)
         ; {List = [] }
       )
-  ; {L1 = label(Label), Pos is WC mod 4, Pos =\= 0, Nop_q is 4 - Pos },!,
+  ; {nonvar(L1), L1 = label(Label), Pos is WC mod 4, Pos =\= 0, Nop_q is 4 - Pos},!,
     nops(Nop_q),[label(Label)],
       (   {List = [_|_]},!,
           nopping(List,0)
         ; {List = [] }
       )
-  ; {L1 = jump, 3 is WC mod 4},!,
+  ; {nonvar(L1),L1 = jump, 3 is WC mod 4},!,
     [jump],
       (   {List = [_|_]},!,
           nopping(List,0)
         ; {List = [] }
       )
-  ; {L1 = jump, Pos is WC mod 4, Nop_q is 4 - Pos-1},!,
+  ; {nonvar(L1),L1 = jump, Pos is WC mod 4, Nop_q is 4 - Pos-1},!,
     [jump],nops(Nop_q),
       (   {List = [_|_]},!,
           nopping(List,0)
@@ -488,6 +489,14 @@ nopping([L1|List],WC) -->
       )
 ).
 
+%% zamiast [label(Label)] dac NIC | juz jest zakomentowane
+labeling([H|T],WC) -->
+    {nonvar(H), H = label(Label), Label is WC div 4 },!,
+    /*[label(Label)],*/labeling(T,WC)
+  ; {nonvar(H), H \= label(_),not(number(H)), WCP is WC + 1},!,
+    [H],labeling(T,WCP)
+  ; [H],{WCP is WC + 4},labeling(T,WCP).
+labeling([],_) --> [].
   
 
 to_file(Input, File) :-
@@ -505,7 +514,8 @@ shit_to_file(Input, Output) :-
     phrase(nopping(Assemble,0),Nopped),
     phrase(get_const_right(Nopped,1,[]),Consted),
     phrase(replace_var(Consted,Dec_List),Replaced),
+    phrase(labeling(Replaced,0),Labeled),
     open(Output,write, Stream),
-    write(Stream,Replaced),
+    write(Stream,Labeled),
     close(Stream).
 
