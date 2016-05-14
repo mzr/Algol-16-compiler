@@ -57,7 +57,6 @@ lexer(Tokens) -->
          { Tokens = [] }
    ).
 
-%% skip --> (comment ; white), skip,!.
 skip --> (comment, skip) | (blank, skip), !. 
 skip --> [].
 
@@ -93,10 +92,12 @@ block(Block) -->
     { Block =.. [block, Dekl, Instr] }.
 
 %% deklaracje
-declarations(Dec) --> %% to cos chyba popsulem wczesniej
+declarations(Dec_F) --> %% to cos chyba popsulem wczesniej
+(
   declaration(Dec2),!,declarations(Dec1),
     {Dec = [ Dec2 | Dec1] }
-  ; [], { Dec = [] }.
+  ; [], { Dec = [] }
+),{ flatten(Dec,Dec_F)}.
 
 %% deklaracja
 declaration(Dec) -->
@@ -107,11 +108,11 @@ declaration(Dec) -->
 declarator(Dec) -->
   [tokLocal], variables(Dec).
 
-variables(Vars) -->
+variables(Vars) --> 
   variabl(V), [tokColon],!, variables(Va),
-  { Vars = [V|Va] }
+  { Vars = [var(V)|Va] }
   ; variabl(Var),
-  {Vars = [Var] }.
+  {Vars = [var(Var)] }.
 
 variabl(Var) -->
   [tokVar(Var)].
@@ -278,13 +279,6 @@ parse(CharCodeList, Absynt) :-
    phrase(lexer(TokList), CharCodeList),
    phrase(bool_expr(Absynt), TokList).
 
-
-to_file(Program, File) :-
-  assembly(Program, Absynt),
-   open(File,write, Stream),
-   write(Stream, Absynt),
-   close(Stream).
-
 assembly_to_file(Input, Output) :-
     read_file(Input, SourceCode),
     phrase(lexer(Tokens), SourceCode),
@@ -319,8 +313,13 @@ assembly(In,Out) :-
   phrase(prog(In),Out).
 
 prog(program(_Name,block(_Declarations,Instructions))) -->
-   [set_sp], instructions(Instructions),[footer].
+    [set_sp],
+    %% make_declarations(Declarations,[],65520,Dec_List),
+    %% {assertz(decla(Dec_List))},
+    instructions(Instructions),[footer].
 
+
+sp_minus --> [load_reg(ffff),swapd,swapa,const(0001),swapd,sub,swapd,const(ffff),swapa,swapd,store].
 set_sp --> [const(ffff),swapa,const(fff0),store].
 footer --> [const(0000),syscall].
 push --> [swapd],load_reg(ffff),[swapa,swapd,store,swapa,swapd,const(0001),swapd,sub,swapa,swapd,const(ffff),swapa,store,swapd].
@@ -329,7 +328,6 @@ top --> load_reg(ffff),[swapd,swapa,const(0001),add,swapa,swapd,load].
 set_top --> [swapd],load_reg(ffff),[swapd,swapa,const(0001),add,swapa,store].
 load_reg(Reg) --> [const(Reg), swapa, load].
 store_reg(Reg) --> [swapa,const(Reg),swapa,store].
-
 
 instructions([I1|Instr]) -->
 (
@@ -404,7 +402,13 @@ bool_eval([Bool],True,False) -->
 %% wywolywac z WC = 1 i Number_List = []
 get_const_right([L1|List],WC,Number_List) -->
 (
-    { L1 \= const(_), 0 =\= WC mod 4, WCP is WC + 1 },!,
+    { L1 = label(X) },!,
+    [label(X)],
+      (   {List = [_|_]},!,
+          get_const_right(List,WC,Number_List)
+        ; {List = []}
+      )
+  ; { L1 \= const(_), 0 =\= WC mod 4, WCP is WC + 1 },!,
     [L1],
       (   {List = [_|_]},!,
           get_const_right(List,WCP,Number_List)
@@ -451,8 +455,8 @@ nopping([L1|List],WC) -->
           nopping(List,0)
         ; {List = [] }
       )
-  ; {L1 = label(Label), Pos is WC mod 4, Pos =\= 0, Nop_q is 4 - Pos -1},!,
-    [label(Label)],nops(Nop_q),
+  ; {L1 = label(Label), Pos is WC mod 4, Pos =\= 0, Nop_q is 4 - Pos },!,
+    nops(Nop_q),[label(Label)],
       (   {List = [_|_]},!,
           nopping(List,0)
         ; {List = [] }
@@ -476,4 +480,24 @@ nopping([L1|List],WC) -->
         ; {List = [] }
       )
 ).
+
+  
+
+to_file(Input, File) :-
+  %% phrase(nopping(Input,0), Nopped),
+  phrase(get_const_right(Input,1,[]),Code),
+  open(File,write, Stream),
+  write(Stream, Code),
+  close(Stream).
+
+shit_to_file(Input, Output) :-
+    read_file(Input, SourceCode),
+    phrase(lexer(Tokens), SourceCode),
+    phrase(program(Absynt), Tokens),
+    phrase(prog(Absynt),Assemble),
+    phrase(nopping(Assemble,0),Nopped),
+    phrase(get_const_right(Nopped,1,[]),Consted),
+    open(Output,write, Stream),
+    write(Stream,Consted),
+    close(Stream).
 
