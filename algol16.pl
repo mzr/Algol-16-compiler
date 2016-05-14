@@ -308,18 +308,25 @@ read_all(Stream, Char, [Char|Chars]) :-
 
 
   %% high-assembler
-
-assembly(In,Out) :-
-  phrase(prog(In),Out).
-
-prog(program(_Name,block(_Declarations,Instructions))) -->
+  
+prog(program(_Name,block(Declarations,Instructions)),Dec_List) -->
     [set_sp],
-    %% make_declarations(Declarations,[],65520,Dec_List),
-    %% {assertz(decla(Dec_List))},
+    make_declarations(Declarations,[],65520,Dec_List),
     instructions(Instructions),[footer].
 
+make_declarations([H|T],List_Acc,Adress,Dec_List) -->
+    {H = var(Name), Adress_new is Adress -1 },!,
+    [sp_minus], make_declarations(T,[var(Name,Adress)|List_Acc],Adress_new,Dec_List).
+make_declarations([],List_Acc,_,List_Acc) --> [].
 
-sp_minus --> [load_reg(ffff),swapd,swapa,const(0001),swapd,sub,swapd,const(ffff),swapa,swapd,store].
+replace_var([H|T],Dec) -->
+    {H = var(Name), member(var(Name,Adress),Dec) },!,
+    [Adress],replace_var(T,Dec)
+  ; {H \= var(_)},!,
+    [H], replace_var(T,Dec).
+replace_var([],_) --> [].
+
+sp_minus --> load_reg(ffff),[swapd,swapa,const(0001),swapd,sub,swapd,const(ffff),swapa,swapd,store].
 set_sp --> [const(ffff),swapa,const(fff0),store].
 footer --> [const(0000),syscall].
 push --> [swapd],load_reg(ffff),[swapa,swapd,store,swapa,swapd,const(0001),swapd,sub,swapa,swapd,const(ffff),swapa,store,swapd].
@@ -494,10 +501,11 @@ shit_to_file(Input, Output) :-
     read_file(Input, SourceCode),
     phrase(lexer(Tokens), SourceCode),
     phrase(program(Absynt), Tokens),
-    phrase(prog(Absynt),Assemble),
+    phrase(prog(Absynt,Dec_List),Assemble),
     phrase(nopping(Assemble,0),Nopped),
     phrase(get_const_right(Nopped,1,[]),Consted),
+    phrase(replace_var(Consted,Dec_List),Replaced),
     open(Output,write, Stream),
-    write(Stream,Consted),
+    write(Stream,Replaced),
     close(Stream).
 
