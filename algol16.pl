@@ -274,39 +274,6 @@ rel_op(gt) -->
 rel_op(geq) -->
    [tokGeq].
 
-
-parse(CharCodeList, Absynt) :-
-   phrase(lexer(TokList), CharCodeList),
-   phrase(bool_expr(Absynt), TokList).
-
-assembly_to_file(Input, Output) :-
-    read_file(Input, SourceCode),
-    phrase(lexer(Tokens), SourceCode),
-    phrase(program(Absynt), Tokens),
-    phrase(prog(Absynt),Assemble),
-    open(Output,write, Stream),
-    write(Stream,Assemble),
-    close(Stream).
-
-parse_to_file(Input,Output) :-
-    read_file(Input, SourceCode),
-    phrase(lexer(Tokens), SourceCode),
-    phrase(program(Absynt), Tokens),
-    open(Output,write, Stream),
-    write(Stream,Absynt),
-    close(Stream).
-
-read_file(File, Chars) :-
-    open(File, read, Stream),
-    get_code(Stream, Char),
-    read_all(Stream, Char, Chars),
-    close(Stream).
-read_all(_, -1, []) :- !.
-read_all(Stream, Char, [Char|Chars]) :-
-    get_code(Stream, NextChar),
-    read_all(Stream, NextChar, Chars).
-
-
   %% high-assembler
   
 prog(program(_Name,block(Declarations,Instructions)),Dec_List) -->
@@ -330,7 +297,7 @@ replace_var([],_) --> [].
 
 sp_minus --> load_reg(0xffff),[swapd,swapa,const(0x0001),swapd,sub,swapd,const(0xffff),swapa,swapd,store].
 set_sp --> [const(0xffff),swapa,const(0xfff0),store].
-footer --> [const(0x0000),syscall,nop,nop]. %%%!!!! UWAGA
+footer --> [const(0x0000),syscall]. %%%!!!! UWAGA
 push --> [swapd],load_reg(0xffff),[swapa,swapd,store,swapa,swapd,const(0x0001),swapd,sub,swapa,swapd,const(0xffff),swapa,store,swapd].
 pop --> load_reg(0xffff),[swapd,swapa,const(0x0001),add,swapd,const(0xffff),swapa,swapd,store].
 top --> load_reg(0xffff),[swapd,swapa,const(0x0001),add,swapa,swapd,load].
@@ -402,9 +369,6 @@ bool_eval([Bool],True,False) -->
     bool_eval([Bool_Expr],False,True)
   ; {Bool = neq(Left,Right)},!,
     bool_eval([not(eq(Left,Right))],True,False).
-
-
-
 
 
 %% get right - ustawia ladnie consty i liczby co 4
@@ -488,11 +452,33 @@ nopping([L1|List],WC) -->
     [L1],
       (   {List = [_|_]},!,
           nopping(List,WCP)
-        ; {List = [] }
+        ; {List = [],Nopi is 3 - (WC mod 4) },
+          nopping_extra(Nopi)
       )
 ).
 
+nopping_extra(Nop_missing) -->
+    {Nop_missing is 0},!,
+    []
+  ; {Nop_missing is 1},!,
+    [nop]
+  ; {Nop_missing is 2},!,
+    [nop,nop]
+  ; {Nop_missing is 3},!,
+    [nop,nop,nop].
 
+
+
+%% zamiast [label(Label)] dac NIC | juz jest zakomentowane
+labeling([H|T],WC) -->
+    {nonvar(H), H = label(Label), Label is WC div 4 },!,
+    /*[label(Label)],*/labeling(T,WC)
+  ; {nonvar(H), H \= label(_),not(number(H)), WCP is WC + 1},!,
+    [H],labeling(T,WCP)
+  ; [H],{WCP is WC + 4},labeling(T,WCP).
+labeling([],_) --> [].
+
+%% konstruuje liste liczb w zapisie dziesietnym
 construct([H|T],WC,Acc) -->
   {number(H),!},!,[H],construct(T,WC,0)
 ;
@@ -521,26 +507,7 @@ construct([H|T],WC,Acc) -->
       construct(T,WCP,Acc_New)
   )
 ).
-
-
 construct([],_,_) --> [].
-
-
-%% zamiast [label(Label)] dac NIC | juz jest zakomentowane
-labeling([H|T],WC) -->
-    {nonvar(H), H = label(Label), Label is WC div 4 },!,
-    /*[label(Label)],*/labeling(T,WC)
-  ; {nonvar(H), H \= label(_),not(number(H)), WCP is WC + 1},!,
-    [H],labeling(T,WCP)
-  ; [H],{WCP is WC + 4},labeling(T,WCP).
-labeling([],_) --> [].
-
-to_file(Input, File) :-
-  %% phrase(nopping(Input,0), Nopped),
-  phrase(get_const_right(Input,1,[]),Code),
-  open(File,write, Stream),
-  write(Stream, Code),
-  close(Stream).
 
 shit_to_file(Input, Output) :-
     read_file(Input, SourceCode),
@@ -555,4 +522,14 @@ shit_to_file(Input, Output) :-
     write(Stream,Labeled),
     close(Stream).
 
+%% add construction predicate to above
 
+read_file(File, Chars) :-
+    open(File, read, Stream),
+    get_code(Stream, Char),
+    read_all(Stream, Char, Chars),
+    close(Stream).
+read_all(_, -1, []) :- !.
+read_all(Stream, Char, [Char|Chars]) :-
+    get_code(Stream, NextChar),
+    read_all(Stream, NextChar, Chars).
