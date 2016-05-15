@@ -320,10 +320,11 @@ make_declarations([H|T],List_Acc,Adress,Dec_List) -->
 make_declarations([],List_Acc,_,List_Acc) --> [].
 
 replace_var([H|T],Dec) -->
-    {H = var(Name), member(var(Name,Adress),Dec) },!,
+    {ground(H), H = var(Name), member(var(Name,Adress),Dec) },!,
     [Adress],replace_var(T,Dec)
-  ; {H \= var(_), ground(H) },!,
+  ; {ground(H), H \= var(_)  },!,
     [H], replace_var(T,Dec)
+  ; { ground(H), H = var(Name), not(member(var(Name,_),Dec)),abort} %%abort gdy zmienna nie zadeklarowana
   ; [H],replace_var(T,Dec).
 replace_var([],_) --> [].
 
