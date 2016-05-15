@@ -492,6 +492,40 @@ nopping([L1|List],WC) -->
       )
 ).
 
+
+construct([H|T],WC,Acc) -->
+  {number(H),!},!,[H],construct(T,WC,0)
+;
+(
+  (
+      {H = nop,     !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 0*16^Pot},!
+    ; {H = syscall, !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 1*16^Pot},!
+    ; {H = load,    !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 2*16^Pot},!
+    ; {H = store,   !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 3*16^Pot},!
+    ; {H = swapa,   !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 4*16^Pot},!
+    ; {H = swapd,   !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 5*16^Pot},!
+    ; {H = branchz, !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 6*16^Pot},!
+    ; {H = branchn, !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 7*16^Pot},!
+    ; {H = jump,    !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 8*16^Pot},!
+    ; {H = const,   !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 9*16^Pot},!
+    ; {H = add,     !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 10*16^Pot},!
+    ; {H = sub,     !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 12*16^Pot},!
+    ; {H = mul,     !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 12*16^Pot},!
+    ; {H = div,     !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 13*16^Pot},!
+    ; {H = shift,   !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 14*16^Pot},!
+  ),
+  (
+      {0 is WCP mod 4},!,
+      [Acc_New],construct(T,WCP,0)
+    ; {0 =\= WCP mod 4},!,
+      construct(T,WCP,Acc_New)
+  )
+).
+
+
+construct([],_,_) --> [].
+
+
 %% zamiast [label(Label)] dac NIC | juz jest zakomentowane
 labeling([H|T],WC) -->
     {nonvar(H), H = label(Label), Label is WC div 4 },!,
@@ -500,7 +534,6 @@ labeling([H|T],WC) -->
     [H],labeling(T,WCP)
   ; [H],{WCP is WC + 4},labeling(T,WCP).
 labeling([],_) --> [].
-  
 
 to_file(Input, File) :-
   %% phrase(nopping(Input,0), Nopped),
@@ -521,4 +554,5 @@ shit_to_file(Input, Output) :-
     open(Output,write, Stream),
     write(Stream,Labeled),
     close(Stream).
+
 
