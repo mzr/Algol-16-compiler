@@ -310,13 +310,13 @@ read_all(Stream, Char, [Char|Chars]) :-
   %% high-assembler
   
 prog(program(_Name,block(Declarations,Instructions)),Dec_List) -->
-    [set_sp],
+    set_sp,
     make_declarations(Declarations,[],0xfff0,Dec_List),
-    instructions(Instructions),[footer].
+    instructions(Instructions),footer.
 
 make_declarations([H|T],List_Acc,Adress,Dec_List) -->
     {H = var(Name), Adress_new is Adress -1 },!,
-    [sp_minus], make_declarations(T,[var(Name,Adress)|List_Acc],Adress_new,Dec_List).
+    sp_minus, make_declarations(T,[var(Name,Adress)|List_Acc],Adress_new,Dec_List).
 make_declarations([],List_Acc,_,List_Acc) --> [].
 
 replace_var([H|T],Dec) -->
@@ -330,7 +330,7 @@ replace_var([],_) --> [].
 
 sp_minus --> load_reg(0xffff),[swapd,swapa,const(0x0001),swapd,sub,swapd,const(0xffff),swapa,swapd,store].
 set_sp --> [const(0xffff),swapa,const(0xfff0),store].
-footer --> [const(0x0000),syscall].
+footer --> [const(0x0000),syscall,nop,nop]. %%%!!!! UWAGA
 push --> [swapd],load_reg(0xffff),[swapa,swapd,store,swapa,swapd,const(0x0001),swapd,sub,swapa,swapd,const(0xffff),swapa,store,swapd].
 pop --> load_reg(0xffff),[swapd,swapa,const(0x0001),add,swapd,const(0xffff),swapa,swapd,store].
 top --> load_reg(0xffff),[swapd,swapa,const(0x0001),add,swapa,swapd,load].
@@ -341,11 +341,11 @@ store_reg(Reg) --> [swapa,const(Reg),swapa,store].
 instructions([I1|Instr]) -->
 (
     {I1 = write(Arith) },!,
-    arith_eval(Arith), [top, swapd, pop, const(0x0002), syscall]
+    arith_eval(Arith), top, [swapd], pop, [const(0x0002), syscall]
   ; {I1 = read(Var) },!,
-    [const(1),syscall,store_reg(Var)]
+    [const(1),syscall],store_reg(Var)
   ; {I1 = asgn(Var,Arith)},!,
-    arith_eval(Arith), [top, swapd, pop, swapd], store_reg(Var)
+    arith_eval(Arith), top, [swapd], pop, [swapd], store_reg(Var)
   ; {I1 = if(Bool,Instr2)},!,
     bool_eval(Bool,True,False),
     [label(True)], instructions(Instr2),
@@ -372,21 +372,21 @@ instructions([I1|Instr]) -->
 arith_eval([A1|Arith]) -->
 (   
     {A1 = plus},!,
-    [top, swapd, pop, top, add, set_top]
+    top, [swapd], pop, top, [add], set_top
   ; {A1 = const(N)},!,
-    [const(N), push]
+    [const(N)], push
   ; {A1 = minus},!,
-    [top, swapd, pop, top, sub, set_top]
+    top, [swapd], pop, top, [sub], set_top
   ; {A1 = times},!,
-    [top, swapd, pop, top, mul, set_top]
+    top, [swapd], pop, top, [mul], set_top
   ; {A1 = divs},!,
-    [top, swapd, pop, top, div, set_top]
+    top, [swapd], pop, top, [div], set_top
   ; {A1 = modulo},!,
-    [top, swapd, pop, top, div, const(0xfff0),swapd,shift,set_top]
+    top, [swapd], pop, top, [div, const(0xfff0),swapd,shift],set_top
   ; {A1 = var(X)},!,
-    [load_reg(var(X)),push]
+    load_reg(var(X)),push
   ; {A1 = neg(Arith)},!,
-    arith_eval(Arith), [top, swapd, const(0xffff), mul, set_top]
+    arith_eval(Arith), top, [swapd, const(0xffff), mul], set_top
 ),
 (
     { Arith = [_|_]  },!,  
@@ -397,7 +397,7 @@ bool_eval([Bool],True,False) -->
     {Bool = eq(Left,Right)},!,
     arith_eval(Left),
     arith_eval(Right),
-    [top, swapd, pop, top, sub, swapd, pop, const(True),swapa,swapd,branchz,const(False),jump]
+    top, [swapd], pop, top, [sub, swapd], pop, [const(True),swapa,swapd,branchz,const(False),jump]
   ; {Bool = not(Bool_Expr)},!,
     bool_eval([Bool_Expr],False,True)
   ; {Bool = neq(Left,Right)},!,
@@ -422,10 +422,10 @@ get_const_right([L1|List],WC,Number_List) -->
       (   {List = [_|_]},!,
           get_const_right(List,WCP,Number_List)
         ; {List = [], reverse(Number_List,R) },
-          R
+          R/*Number_List*/
       )
-  ; { L1 \= const(_), 0 is WC mod 4 },!,
-    [L1|Number_List],
+  ; { L1 \= const(_), 0 is WC mod 4 ,reverse(Number_List,R)},!,
+    [L1|R],
       (   {List = [_|_]},!,
           get_const_right(List,1,[])
         ; {List = []}
@@ -435,16 +435,18 @@ get_const_right([L1|List],WC,Number_List) -->
       (   {List = [_|_]},!,
           get_const_right(List,WCP,[N|Number_List])
         ; {List = [],reverse(Number_List,R)},
-          R,[N]
+          R/*Number_List*/,[N]
       )
   ; { L1 = const(N), 0 is WC mod 4,reverse(Number_List,R) },!,
-    [const],R,[N],
+    [const],R/*Number_List*/,[N],
       (   {List = [_|_]},!,
           get_const_right(List,1,[])
         ; {List = []}
       )
 ).
-
+%%dfsdfjsdkfn
+%sdfs fsdklfnlsnf
+%% predykat -->
 nops(N) --> 
     {N is 0},!,
     []
