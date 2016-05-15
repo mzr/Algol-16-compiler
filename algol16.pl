@@ -182,7 +182,7 @@ summand(Acc, Acc) -->
 %% czynnik
 factor(Expr) -->
   [tokMinus],!, simple_expression(Expr1),
-    {Expr =  neg( Expr1) } 
+    {Expr =  neg( Expr2 ) ,flatten([Expr1],Expr2) } 
   ; simple_expression(Expr).
 
 %% wyrazenie_proste
@@ -352,8 +352,8 @@ arith_eval([A1|Arith]) -->
     top, [swapd], pop, top, [div, const(0xfff0),swapd,shift],set_top
   ; {A1 = var(X)},!,
     load_reg(var(X)),push
-  ; {A1 = neg(Arith)},!,
-    arith_eval(Arith), top, [swapd, const(0xffff), mul], set_top
+  ; {A1 = neg(Arith1)},!,
+    arith_eval(Arith1), top, [swapd, const(0xffff), mul], set_top
 ),
 (
     { Arith = [_|_]  },!,  
@@ -410,9 +410,7 @@ get_const_right([L1|List],WC,Number_List) -->
         ; {List = []}
       )
 ).
-%%dfsdfjsdkfn
-%sdfs fsdklfnlsnf
-%% predykat -->
+
 nops(N) --> 
     {N is 0},!,
     []
@@ -511,7 +509,7 @@ construct([H|T],WC,Acc) -->
 ).
 construct([],_,_) --> [].
 
-shit_to_file(Input, Output) :-
+instr_list_to_file(Input, Output) :-
     read_file(Input, SourceCode),
     phrase(lexer(Tokens), SourceCode),
     phrase(program(Absynt), Tokens),
