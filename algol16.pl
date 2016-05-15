@@ -360,6 +360,8 @@ arith_eval([A1|Arith]) -->
     arith_eval(Arith)
   ; { Arith  = [] }
 ).
+
+
 bool_eval([Bool],True,False) -->
     {Bool = eq(Left,Right)},!,
     arith_eval(Left),
@@ -518,8 +520,8 @@ shit_to_file(Input, Output) :-
     phrase(get_const_right(Nopped,1,[]),Consted),
     phrase(replace_var(Consted,Dec_List),Replaced),
     phrase(labeling(Replaced,0),Labeled),
-    open(Output,write, Stream),
-    write(Stream,Labeled),
+    open(Output,write, Labeled),
+    write(Stream,Absynt),
     close(Stream).
 
 %% add construction predicate to above
@@ -533,3 +535,4 @@ read_all(_, -1, []) :- !.
 read_all(Stream, Char, [Char|Chars]) :-
     get_code(Stream, NextChar),
     read_all(Stream, NextChar, Chars).
+
