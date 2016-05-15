@@ -520,8 +520,8 @@ shit_to_file(Input, Output) :-
     phrase(get_const_right(Nopped,1,[]),Consted),
     phrase(replace_var(Consted,Dec_List),Replaced),
     phrase(labeling(Replaced,0),Labeled),
-    open(Output,write, Labeled),
-    write(Stream,Absynt),
+    open(Output,write, Stream),
+    write(Stream,Labeled),
     close(Stream).
 
 %% add construction predicate to above
