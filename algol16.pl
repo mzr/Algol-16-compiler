@@ -1,5 +1,20 @@
 :- use_module(library(dcg/basics)).
 
+%% ****************************************************************************** %%
+%%                                                                                %%
+%% Jan Mazur                                                                      %%
+%% nr indeksu 281141                                                              %%
+%% skorzystalem z pliku while-parser.pl                                           %%
+%%                                                                                %%
+%% Wersja języka: podstawowa za 22 pkt.                                           %%
+%%                                                                                %%
+%% Glowny predykat algol16/2 (na dole zgodnie z zadaniem),                        %%
+%% jednak duzo ciekawszy jest                                                     %%
+%% predykat: instr_list_to_file(Input, Output) (na samym dole)                    %%
+%% Input - nazwa pliku wejsciowego programu napisanego w jezyku Algol 16          %%
+%% Output - nazwa pliku w ktorym znajdzie sie prologowa lista liczb               %%
+%%                                                                                %%
+%% ****************************************************************************** %%
 
 lexer(Tokens) -->
    skip,
@@ -281,11 +296,13 @@ prog(program(_Name,block(Declarations,Instructions)),Dec_List) -->
     make_declarations(Declarations,[],0xfff0,Dec_List),
     instructions(Instructions),footer.
 
+%% tworzy liste ktora ma w sobie 'pary' zmienna-adres
 make_declarations([H|T],List_Acc,Adress,Dec_List) -->
     {H = var(Name), Adress_new is Adress -1 },!,
     sp_minus, make_declarations(T,[var(Name,Adress)|List_Acc],Adress_new,Dec_List).
 make_declarations([],List_Acc,_,List_Acc) --> [].
 
+%% podmienia var(Var) na adres zmiennej Var
 replace_var([H|T],Dec) -->
     {ground(H), H = var(Name), member(var(Name,Adress),Dec) },!,
     [Adress],replace_var(T,Dec)
@@ -297,7 +314,7 @@ replace_var([],_) --> [].
 
 sp_minus --> load_reg(0xffff),[swapd,swapa,const(0x0001),swapd,sub,swapd,const(0xffff),swapa,swapd,store].
 set_sp --> [const(0xffff),swapa,const(0xfff0),store].
-footer --> [const(0x0000),syscall]. %%%!!!! UWAGA
+footer --> [const(0x0000),syscall]. 
 push --> [swapd],load_reg(0xffff),[swapa,swapd,store,swapa,swapd,const(0x0001),swapd,sub,swapa,swapd,const(0xffff),swapa,store,swapd].
 pop --> load_reg(0xffff),[swapd,swapa,const(0x0001),add,swapd,const(0xffff),swapa,swapd,store].
 top --> load_reg(0xffff),[swapd,swapa,const(0x0001),add,swapa,swapd,load].
@@ -335,7 +352,7 @@ instructions([I1|Instr]) -->
   ; { Instr = [] }
 ).
 
-%% liczy wyrazenie arytmetyczne na stosie
+%% liczy wyrazenie arytmetyczne na stosie - ONP
 arith_eval([A1|Arith]) -->
 (   
     {A1 = plus},!,
@@ -361,7 +378,7 @@ arith_eval([A1|Arith]) -->
   ; { Arith  = [] }
 ).
 
-
+%% brak ONP aby nie bylo konfliktu z ONP z arytmetyka
 bool_eval([Bool],True,False) -->
     {Bool = eq(Left,Right)},!,
     arith_eval(Left),
@@ -444,6 +461,7 @@ nops(N) -->
     [nop,nop,nop].
 
 %% wywolywac z WC = 0
+%% dodaje NOP gdzie trzeba
 nopping([L1|List],WC) -->
 (
     {nonvar(L1), L1 = label(Label), 0 is WC mod 4},!,
@@ -503,6 +521,7 @@ nopping([L1|List],WC) -->
       )
 ).
 
+%% NOPy na koncu pliku
 nopping_extra(Nop_missing) -->
     {Nop_missing is 0},!,
     []
@@ -514,8 +533,7 @@ nopping_extra(Nop_missing) -->
     [nop,nop,nop].
 
 
-
-%% zamiast [label(Label)] dac NIC | juz jest zakomentowane
+%% zamiast [label(Label)] daje NIC i ikonkretnia zmienne w labelach
 labeling([H|T],WC) -->
     {nonvar(H), H = label(Label), Label is WC div 4 },!,
     /*[label(Label)],*/labeling(T,WC)
@@ -555,6 +573,17 @@ construct([H|T],WC,Acc) -->
 ).
 construct([],_,_) --> [].
 
+algol16(Source,SextiumBin) :-
+    phrase(lexer(Tokens), Source),
+    phrase(program(Absynt), Tokens),
+    phrase(prog(Absynt,Dec_List),Assemble),
+    phrase(nopping(Assemble,0),Nopped),
+    phrase(get_const_right(Nopped,1,[]),Consted),
+    phrase(replace_var(Consted,Dec_List),Replaced),
+    phrase(labeling(Replaced,0),Labeled),
+    phrase(construct(Labeled,0,0),SextiumBin).
+
+
 instr_list_to_file(Input, Output) :-
     read_file(Input, SourceCode),
     phrase(lexer(Tokens), SourceCode),
@@ -564,9 +593,11 @@ instr_list_to_file(Input, Output) :-
     phrase(get_const_right(Nopped,1,[]),Consted),
     phrase(replace_var(Consted,Dec_List),Replaced),
     phrase(labeling(Replaced,0),Labeled),
+    phrase(construct(Labeled,0,0),Constructed),
     open(Output,write, Stream),
-    write(Stream,Labeled),
+    write(Stream,Constructed),
     close(Stream).
+%% add construction predicate to above
 
 parse_to_file(Input,Output) :-
     read_file(Input, SourceCode),
@@ -576,7 +607,6 @@ parse_to_file(Input,Output) :-
     write(Stream,Absynt),
     close(Stream).
 
-%% add construction predicate to above
 
 read_file(File, Chars) :-
     open(File, read, Stream),
