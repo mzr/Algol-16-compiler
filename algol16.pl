@@ -382,9 +382,7 @@ bool_eval([Bool],True,False) -->
   ; {Bool = gt(Left,Right)},!,
     arith_eval(Left),
     arith_eval(Right),
-    top,store_reg(0xFFFC),pop,[const(0x0001),swapd],load_reg(0xFFFC),[shift],
-    load_reg(0xFFFC),[swapd],top,[swapd,sub,const(0xFFFF),swapd,shift,
-    swapa,/*w ar wynik*/const(True),swapa,branchn,const(False),jump]
+    top, [swapd], pop, top, [swapd,sub, swapd], pop, [const(True),swapa,swapd,branchn,const(False),jump]
   ; {Bool = leq(Left,Right)}, !,
     bool_eval([not(gt(Left,Right))],True,False)
   ; {Bool = geq(Left,Right)},!,
@@ -392,7 +390,9 @@ bool_eval([Bool],True,False) -->
   ; {Bool = lt(Left,Right)},!,
     arith_eval(Left),
     arith_eval(Right),
-    top, [swapd], pop, top, [sub, swapd], pop, [const(True),swapa,swapd,branchn,const(False),jump].
+    top, [swapd], pop, top, [sub, swapd], 
+    pop, [const(True),swapa,swapd,branchn,const(False),jump].
+
 
 
 
@@ -542,7 +542,7 @@ construct([H|T],WC,Acc) -->
     ; {H = jump,    !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 8*16^Pot},!
     ; {H = const,   !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 9*16^Pot},!
     ; {H = add,     !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 10*16^Pot},!
-    ; {H = sub,     !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 12*16^Pot},!
+    ; {H = sub,     !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 11*16^Pot},!
     ; {H = mul,     !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 12*16^Pot},!
     ; {H = div,     !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 13*16^Pot},!
     ; {H = shift,   !,Pot is 3 - (WC mod 4), WCP is WC + 1, Acc_New is Acc + 14*16^Pot},!
