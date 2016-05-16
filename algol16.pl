@@ -382,17 +382,16 @@ bool_eval([Bool],True,False) -->
   ; {Bool = gt(Left,Right)},!,
     arith_eval(Left),
     arith_eval(Right),
-    top, [swapd], pop, top, [swapd,sub, swapd], pop, [const(True),swapa,swapd,branchn,const(False),jump]
+    %% top, [swapd], pop, top, [swapd,sub, swapd], pop, [const(True),swapa,swapd,branchn,const(False),jump]
+    top,store_reg(0xFFFC),pop,[const(0x0001),swapd],load_reg(0xFFFC),[shift],top,[swapd],pop,
+    load_reg(0xFFFC),[sub,swapd,const(0xFFFF),swapd,shift,swapa,const(True),swapa,branchn,const(False),jump]
   ; {Bool = leq(Left,Right)}, !,
     bool_eval([not(gt(Left,Right))],True,False)
   ; {Bool = geq(Left,Right)},!,
-    bool_eval([not(lt(Left,Right))],True,False)
+    bool_eval([or(gt(Left,Right),eq(Left,Right))],True,False)
   ; {Bool = lt(Left,Right)},!,
-    arith_eval(Left),
-    arith_eval(Right),
-    top, [swapd], pop, top, [sub, swapd], 
-    pop, [const(True),swapa,swapd,branchn,const(False),jump].
-
+    bool_eval([not(geq(Left,Right))],True,False).
+    
 
 
 
