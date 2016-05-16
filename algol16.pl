@@ -182,7 +182,7 @@ summand(Acc, Acc) -->
 %% czynnik
 factor(Expr) -->
   [tokMinus],!, simple_expression(Expr1),
-    {Expr =  neg( Expr2 ) ,flatten([Expr1],Expr2) } 
+    {Expr =  neg( Expr2 ) ,flatten([Expr1],Expr2) } %%changed
   ; simple_expression(Expr).
 
 %% wyrazenie_proste
@@ -370,7 +370,30 @@ bool_eval([Bool],True,False) -->
   ; {Bool = not(Bool_Expr)},!,
     bool_eval([Bool_Expr],False,True)
   ; {Bool = neq(Left,Right)},!,
-    bool_eval([not(eq(Left,Right))],True,False).
+    bool_eval([not(eq(Left,Right))],True,False)
+  ; {Bool = and(Left,Right)},!,
+    bool_eval([Left],Tmp,False),
+    [label(Tmp)],
+    bool_eval([Right], True, False)
+  ; {Bool = or(Left,Right)},!,
+    bool_eval([Left],True,Tmp),
+    [label(Tmp)],
+    bool_eval([Right],True,False)
+  ; {Bool = gt(Left,Right)},!,
+    arith_eval(Left),
+    arith_eval(Right),
+    top,store_reg(0xFFFC),pop,[const(0x0001),swapd],load_reg(0xFFFC),[shift],
+    load_reg(0xFFFC),[swapd],top,[swapd,sub,const(0xFFFF),swapd,shift,
+    swapa,/*w ar wynik*/const(True),swapa,branchn,const(False),jump]
+  ; {Bool = leq(Left,Right)}, !,
+    bool_eval([not(gt(Left,Right))],True,False)
+  ; {Bool = geq(Left,Right)},!,
+    bool_eval([not(lt(Left,Right))],True,False)
+  ; {Bool = lt(Left,Right)},!,
+    arith_eval(Left),
+    arith_eval(Right),
+    top, [swapd], pop, top, [sub, swapd], pop, [const(True),swapa,swapd,branchn,const(False),jump].
+
 
 
 %% get right - ustawia ladnie consty i liczby co 4
@@ -448,6 +471,30 @@ nopping([L1|List],WC) -->
           nopping(List,0)
         ; {List = [] }
       )
+  ; {nonvar(L1),L1 = branchn, 3 is WC mod 4},!,
+    [branchn],
+      (   {List = [_|_]},!,
+          nopping(List,0)
+        ; {List = [] }
+      )
+  ; {nonvar(L1),L1 = branchn, Pos is WC mod 4, Nop_q is 4 - Pos-1},!,
+    [branchn],nops(Nop_q),
+      (   {List = [_|_]},!,
+          nopping(List,0)
+        ; {List = [] }
+      )
+  ; {nonvar(L1),L1 = branchz, 3 is WC mod 4},!,
+    [branchz],
+      (   {List = [_|_]},!,
+          nopping(List,0)
+        ; {List = [] }
+      )
+  ; {nonvar(L1),L1 = branchz, Pos is WC mod 4, Nop_q is 4 - Pos-1},!,
+    [branchz],nops(Nop_q),
+      (   {List = [_|_]},!,
+          nopping(List,0)
+        ; {List = [] }
+      )
   ; {WCP is WC + 1},
     [L1],
       (   {List = [_|_]},!,
@@ -520,6 +567,14 @@ instr_list_to_file(Input, Output) :-
     phrase(labeling(Replaced,0),Labeled),
     open(Output,write, Stream),
     write(Stream,Labeled),
+    close(Stream).
+
+parse_to_file(Input,Output) :-
+    read_file(Input, SourceCode),
+    phrase(lexer(Tokens), SourceCode),
+    phrase(program(Absynt), Tokens),
+    open(Output,write, Stream),
+    write(Stream,Absynt),
     close(Stream).
 
 %% add construction predicate to above
