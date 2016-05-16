@@ -1,16 +1,21 @@
-program Piec_Dziesiec_Pietnascie
-	procedure f (x)
-		procedure one ()
-		begin
-			write 5;
-			return 1
-		end
-	begin
-		if x > 0
-		then
-			call f (x - one())
-		fi
-	end
+program example
 begin
-	call f (5)
+	if  1 <  0 then write  -9 fi;
+    if  1 <= 0 then write -10 fi;
+    if  1 <> 0 then write   9 fi;
+    if  1 =  0 then write -11 fi;
+    if  1 >  0 then write  10 fi;
+    if  1 >= 0 then write  11 fi;
+    if  1 <  1 then write -12 fi;
+    if  1 <= 1 then write  12 fi;
+    if  1 <> 1 then write -13 fi;
+    if  1 =  1 then write  13 fi;
+    if  1 >  1 then write -14 fi;
+    if  1 >= 1 then write  14 fi;
+    if -1 <  0 then write  15 fi;
+    if -1 <= 0 then write  16 fi;
+    if -1 <> 0 then write  17 fi;
+    if -1 =  0 then write -15 fi;
+    if -1 >  0 then write -16 fi;
+    if -1 >= 0 then write -17 fi
 end

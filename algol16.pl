@@ -579,7 +579,7 @@ algol16(Source,SextiumBin) :-
     phrase(prog(Absynt,Dec_List),Assemble),
     phrase(nopping(Assemble,0),Nopped),
     phrase(get_const_right(Nopped,1,[]),Consted),
-    phrase(replace_var(Consted,Dec_List),Replaced),
+    phrase(replace_valsr(Consted,Dec_List),Replaced),
     phrase(labeling(Replaced,0),Labeled),
     phrase(construct(Labeled,0,0),SextiumBin).
 
