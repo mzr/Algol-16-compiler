@@ -2,8 +2,8 @@
 
 %% ****************************************************************************** %%
 %%                                                                                %%
-%% Jan Mazur                                                                      %%
-%% nr indeksu 281141                                                              %%
+%% dingorth                                                                       %%
+%% nr indeksu                                                                     %%
 %% skorzystalem z pliku while-parser.pl                                           %%
 %%                                                                                %%
 %% Wersja języka: podstawowa za 22 pkt.                                           %%
@@ -15,6 +15,14 @@
 %% Output - nazwa pliku w ktorym znajdzie sie prologowa lista liczb               %%
 %%                                                                                %%
 %% ****************************************************************************** %%
+
+
+%% HOW TO USE?
+%% 
+%% use instr_list_to_file( input_file_with_algol16_code, machine_code_output_file )
+%% then use script ./compile_words_and_run.sh machine_code_output_file
+%% 
+
 
 lexer(Tokens) -->
    skip,
@@ -532,7 +540,6 @@ nopping_extra(Nop_missing) -->
   ; {Nop_missing is 3},!,
     [nop,nop,nop].
 
-
 %% zamiast [label(Label)] daje NIC i ikonkretnia zmienne w labelach
 labeling([H|T],WC) -->
     {nonvar(H), H = label(Label), Label is WC div 4 },!,
@@ -593,9 +600,9 @@ instr_list_to_file(Input, Output) :-
     phrase(get_const_right(Nopped,1,[]),Consted),
     phrase(replace_var(Consted,Dec_List),Replaced),
     phrase(labeling(Replaced,0),Labeled),
-    phrase(construct(Labeled,0,0),Constructed),
-    open(Output,write, Stream),
-    write(Stream,Constructed),
+    %% phrase(construct(Labeled,0,0),Constructed),
+    open(Output,write,Stream),
+    write(Stream, Labeled),
     close(Stream).
 %% add construction predicate to above
 
@@ -617,4 +624,3 @@ read_all(_, -1, []) :- !.
 read_all(Stream, Char, [Char|Chars]) :-
     get_code(Stream, NextChar),
     read_all(Stream, NextChar, Chars).
-
