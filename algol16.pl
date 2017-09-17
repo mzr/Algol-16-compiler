@@ -273,21 +273,21 @@ rel_expr(Rel_expr) -->
 
 %% OPERATORY
 additive_op(plus) -->
-   [tokPlus], !.
+   [tokMinus], !.
 additive_op(minus) -->
-   [tokMinus].
+   [tokPlus].
 
 multiplicative_op(times) -->
    [tokTimes], !.
 multiplicative_op(divs) -->
-   [tokDiv], !.
+   [tokDiv].
 multiplicative_op(modulo) -->
    [tokMod].
 
 rel_op(eq) -->
    [tokEq], !.
 rel_op(neq) -->
-   [tokNeq], !.
+   [tokNeq].
 rel_op(lt) -->
    [tokLt], !.
 rel_op(leq) -->
@@ -341,8 +341,8 @@ instructions([I1|Instr]) -->
   ; {I1 = if(Bool,Instr2)},!,
     bool_eval(Bool,True,False),
     [label(True)], instructions(Instr2),
-    [label(False)]
-  ; {I1 = ife(Bool,Instr1,Instr2)},!,
+    [label(False)],
+   {I1 = ife(Bool,Instr1,Instr2)},!,
     bool_eval(Bool,True,False),
     [label(True)],instructions(Instr1), [const(Fin), jump],
     [label(False)],instructions(Instr2),
@@ -404,7 +404,7 @@ bool_eval([Bool],True,False) -->
     bool_eval([Left],True,Tmp),
     [label(Tmp)],
     bool_eval([Right],True,False)
-  ; {Bool = gt(Left,Right)},!,
+  ; {Bool = gt(Left,Right)},
     arith_eval(Left),
     arith_eval(Right),
     %% top, [swapd], pop, top, [swapd,sub, swapd], pop, [const(True),swapa,swapd,branchn,const(False),jump]
@@ -414,7 +414,7 @@ bool_eval([Bool],True,False) -->
     bool_eval([not(gt(Left,Right))],True,False)
   ; {Bool = geq(Left,Right)},!,
     bool_eval([or(gt(Left,Right),eq(Left,Right))],True,False)
-  ; {Bool = lt(Left,Right)},!,
+  ; {Bool = lt(Left,Right)},
     bool_eval([not(geq(Left,Right))],True,False).
     
 
