@@ -6,7 +6,7 @@
 %% nr indeksu                                                                     %%
 %% skorzystalem z pliku while-parser.pl                                           %%
 %%                                                                                %%
-%% Wersja języka: podstawowa za 22 pkt.                                           %%
+%% Wersja języka: 22 pkt.                                                         %%
 %%                                                                                %%
 %% Glowny predykat algol16/2 (na dole zgodnie z zadaniem),                        %%
 %% jednak duzo ciekawszy jest                                                     %%
